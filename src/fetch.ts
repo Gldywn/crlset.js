@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
-import type { OmahaResponse } from './interfaces';
-import { CRLSET_APP_ID, OMAHA_BASE_URL } from './constants';
+import type { OmahaResponse } from './interfaces.js';
+import { CRLSET_APP_ID, OMAHA_BASE_URL } from './constants.js';
 
 /**
  * Builds the URL to fetch the latest CRLSet version information from Google's Omaha proxy.

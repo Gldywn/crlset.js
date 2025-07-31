@@ -1,23 +1,31 @@
+import { jest } from '@jest/globals';
 import { readFileSync } from 'fs';
-import { join } from 'path';
-import { CRLSet, loadLatestCRLSet, processCrx, RevocationStatus } from '../src';
-import * as fetcher from '../src/fetch';
-import { getTestDataDir } from '../scripts/utils';
+import { CRL_SET_FIXTURE_PATH } from './utils';
+import type * as CRLSetModuleType from '../src';
 
-const FIXTURE_PATH = join(getTestDataDir(), 'crlset.crx');
+const downloadLatestCRLSetCrxMock = jest.fn<typeof CRLSetModuleType.downloadLatestCRLSetCrx>();
+
+jest.unstable_mockModule('../src/fetch.js', () => ({
+  downloadLatestCRLSetCrx: downloadLatestCRLSetCrxMock,
+}));
 
 describe('CRLSet revocation logic', () => {
-  let crlSet: CRLSet;
+  let crlSet: CRLSetModuleType.CRLSet;
   let crxBuffer: Buffer;
   let blockedSpkiHash: string;
   let revokedSerialInfo: { spkiHash: string; serialNumber: string };
 
-  beforeAll(() => {
-    crxBuffer = readFileSync(FIXTURE_PATH);
-    const { header, revocations } = processCrx(crxBuffer);
-    crlSet = new CRLSet(header, revocations);
+  let crlsetModule: typeof CRLSetModuleType;
 
-    // Prepare data for tests
+  beforeAll(async () => {
+    crlsetModule = await import('../src');
+
+    crxBuffer = readFileSync(CRL_SET_FIXTURE_PATH);
+    const { header, revocations } = await crlsetModule.processCrx(crxBuffer, {
+      verifySignature: true,
+    });
+    crlSet = new crlsetModule.CRLSet(header, revocations);
+
     const blockedSpkiBase64 = crlSet.header.BlockedSPKIs[0];
     if (blockedSpkiBase64) {
       blockedSpkiHash = Buffer.from(blockedSpkiBase64, 'base64').toString('hex');
@@ -28,13 +36,17 @@ describe('CRLSet revocation logic', () => {
     revokedSerialInfo = { spkiHash, serialNumber };
   });
 
+  afterEach(() => {
+    downloadLatestCRLSetCrxMock.mockClear();
+  });
+
   describe('isRevokedBySPKI', () => {
     it('should correctly identify a blocked SPKI', () => {
       if (blockedSpkiHash) {
         expect(crlSet.isRevokedBySPKI(blockedSpkiHash)).toBe(true);
       } else {
         console.warn('No BlockedSPKIs in the current test fixture. Skipping test.');
-        expect(true).toBe(true);
+        expect(false).toBe(true);
       }
     });
 
@@ -66,7 +78,7 @@ describe('CRLSet revocation logic', () => {
   describe('check', () => {
     it('should return REVOKED_BY_SPKI for a blocked CA', () => {
       if (blockedSpkiHash) {
-        expect(crlSet.check(blockedSpkiHash, 'any-serial')).toBe(RevocationStatus.REVOKED_BY_SPKI);
+        expect(crlSet.check(blockedSpkiHash, 'any-serial')).toBe(crlsetModule.RevocationStatus.REVOKED_BY_SPKI);
       }
     });
 
@@ -74,36 +86,32 @@ describe('CRLSet revocation logic', () => {
       const { spkiHash, serialNumber } = revokedSerialInfo;
       // Ensure this SPKI is not globally blocked for this test
       if (spkiHash !== blockedSpkiHash) {
-        expect(crlSet.check(spkiHash, serialNumber)).toBe(RevocationStatus.REVOKED_BY_SERIAL);
+        expect(crlSet.check(spkiHash, serialNumber)).toBe(crlsetModule.RevocationStatus.REVOKED_BY_SERIAL);
       }
     });
 
     it('should return OK for a valid certificate', () => {
       const fakeSpkiHash = 'd'.repeat(64);
       const fakeSerialNumber = 'e'.repeat(16);
-      expect(crlSet.check(fakeSpkiHash, fakeSerialNumber)).toBe(RevocationStatus.OK);
+      expect(crlSet.check(fakeSpkiHash, fakeSerialNumber)).toBe(crlsetModule.RevocationStatus.OK);
     });
   });
 
   describe('loadLatestCRLSet', () => {
     it('should fetch, process, and return a CRLSet instance', async () => {
-      const downloadSpy = jest.spyOn(fetcher, 'downloadLatestCRLSetCrx').mockResolvedValue(crxBuffer);
+      downloadLatestCRLSetCrxMock.mockResolvedValue(crxBuffer);
 
-      const loadedCrlSet = await loadLatestCRLSet();
+      const loadedCrlSet = await crlsetModule.loadLatestCRLSet({ verifySignature: true });
 
-      expect(loadedCrlSet).toBeInstanceOf(CRLSet);
+      expect(loadedCrlSet).toBeInstanceOf(crlsetModule.CRLSet);
       expect(loadedCrlSet.sequence).toBe(crlSet.sequence);
-      expect(downloadSpy).toHaveBeenCalledTimes(1);
-
-      downloadSpy.mockRestore();
+      expect(downloadLatestCRLSetCrxMock).toHaveBeenCalledTimes(1);
     });
 
     it('should throw an error if fetching fails', async () => {
-      const downloadSpy = jest.spyOn(fetcher, 'downloadLatestCRLSetCrx').mockRejectedValue(new Error('Network Error'));
+      downloadLatestCRLSetCrxMock.mockRejectedValue(new Error('Network Error'));
 
-      await expect(loadLatestCRLSet()).rejects.toThrow('Network Error');
-
-      downloadSpy.mockRestore();
+      await expect(crlsetModule.loadLatestCRLSet({ verifySignature: true })).rejects.toThrow('Network Error');
     });
   });
 });

@@ -24,3 +24,14 @@ export const OMAHA_BASE_URL = 'https://clients2.google.com/service/update2/crx';
  * @see https://developer.chrome.com/docs/extensions/how-to/distribute/crx-format
  */
 export const CRX_MAGIC = 'Cr24';
+
+/**
+ * The name of the ZIP entry that contains the CRLSet file.
+ */
+export const CRL_SET_ZIP_ENTRY = 'crl-set';
+
+/**
+ * Prefix used when constructing the data to be signed or verified in CRX3 files.
+ * This value is required by the CRX3 signature format and must match exactly.
+ */
+export const SIGNED_DATA_PREFIX = Buffer.from('CRX3 SignedData\x00', 'ascii');

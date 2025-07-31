@@ -1,6 +1,4 @@
-import { downloadLatestCRLSetCrx } from './fetch';
-import { processCrx } from './parser';
-import { CRLSetHeader, RevocationStatus } from './interfaces';
+import { CRLSetHeader, RevocationStatus } from './interfaces.js';
 
 /**
  * Represents a parsed Chrome CRLSet.
@@ -49,7 +47,7 @@ export class CRLSet {
    * @returns `true` if all certificates from this CA should be rejected.
    */
   isRevokedBySPKI(spkiHash: string): boolean {
-    return this.blockedSpkis.has(spkiHash);
+    return this.blockedSpkis.has(spkiHash.toLowerCase());
   }
 
   /**
@@ -61,21 +59,24 @@ export class CRLSet {
    * @returns `true` if the certificate is listed as revoked for the given issuer.
    */
   isRevokedBySerial(spkiHash: string, serialNumber: string): boolean {
-    const serials = this.revocations.get(spkiHash);
+    const serials = this.revocations.get(spkiHash.toLowerCase());
     if (!serials) {
       return false;
     }
     return serials.has(serialNumber.toLowerCase());
   }
-}
 
-/**
- * Fetches, unpacks, and parses the latest CRLSet from Google's servers.
- *
- * @returns A new `CRLSet` instance containing the latest revocation data.
- */
-export async function loadLatestCRLSet(): Promise<CRLSet> {
-  const crxBuffer = await downloadLatestCRLSetCrx();
-  const { header, revocations } = processCrx(crxBuffer);
-  return new CRLSet(header, revocations);
+  /**
+   * Returns the number of revoked certificate entries.
+   */
+  getRevocationCount(): number {
+    return this.revocations.size;
+  }
+
+  /**
+   * Returns the number of blocked SPKIs.
+   */
+  getBlockedSpkiCount(): number {
+    return this.blockedSpkis.size;
+  }
 }

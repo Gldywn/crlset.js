@@ -5,7 +5,7 @@
  * making network requests, ensuring they are fast and reliable.
  *
  * To run this script, you can use tsx:
- * `npx tsx scripts/fetch-test-crlset.ts`
+ * `npm run test:fetch-test-crlset`
  */
 import { join } from 'node:path';
 import { writeFile } from 'fs/promises';

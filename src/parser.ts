@@ -1,18 +1,23 @@
 import AdmZip from 'adm-zip';
-import type { CRLSetHeader } from './interfaces';
-import { CRX_MAGIC } from './constants';
+import type { CRLSetHeader, CrxFileHeader } from './interfaces.js';
+import { verifySignature } from './verify.js';
+import { getCrxHeaderType } from './utils/proto.js';
+import { CRX_MAGIC, CRL_SET_ZIP_ENTRY } from './constants.js';
 
 /**
- * Parses a raw CRX file buffer to extract the `crl-set` data.
+ * Parses a raw CRX file buffer to extract the Protobuf header and ZIP archive buffer.
  *
  * This function follows the logic from the Go tool, skipping the
  * protobuf header to directly access the ZIP archive.
  *
  * @param crxBuffer The buffer containing the CRX file data.
- * @returns A buffer with the raw `crl-set` data.
- * @throws If the file is not a valid CRXv3 file or `crl-set` is not found.
+ * @returns An object with the parsed Protobuf header (`header`) and the ZIP archive buffer (`zipBuffer`).
+ * @throws If the file is not a valid CRXv3 file or if the header length is invalid.
  */
-export function unpackCrx(crxBuffer: Buffer): Buffer {
+export async function unpackCrx(crxBuffer: Buffer): Promise<{
+  header: CrxFileHeader;
+  zipBuffer: Buffer;
+}> {
   const magic = crxBuffer.toString('ascii', 0, 4);
   if (magic !== CRX_MAGIC) {
     throw new Error(`Invalid CRX magic: expected ${CRX_MAGIC}, got ${magic}`);
@@ -30,25 +35,43 @@ export function unpackCrx(crxBuffer: Buffer): Buffer {
     throw new Error('Invalid CRX header: header length exceeds file size.');
   }
 
+  const protoHeaderBuffer = crxBuffer.subarray(12, zipOffset);
+  const CrxHeader = await getCrxHeaderType();
+  const header = CrxHeader.decode(protoHeaderBuffer).toJSON() as CrxFileHeader;
+
   const zipBuffer = crxBuffer.subarray(zipOffset);
 
+  return { header, zipBuffer };
+}
+
+/**
+ * Extracts the CRLSet file from a ZIP archive buffer.
+ *
+ * This function opens the provided ZIP buffer, searches for the `crl-set` entry,
+ * and returns its raw data as a Buffer.
+ *
+ * @param zipBuffer The buffer containing the ZIP archive data.
+ * @returns The raw Buffer of the CRLSet file.
+ * @throws If the ZIP archive does not contain a CRLSet file.
+ */
+function extractCrlSetFromZip(zipBuffer: Buffer): Buffer {
   const zip = new AdmZip(zipBuffer);
-  const crlSetEntry = zip.getEntry('crl-set');
+  const crlSetEntry = zip.getEntry(CRL_SET_ZIP_ENTRY);
 
   if (!crlSetEntry) {
-    throw new Error('CRX archive does not contain a "crl-set" file.');
+    throw new Error('CRX archive does not contain a CRLSet file.');
   }
 
   return crlSetEntry.getData();
 }
 
 /**
- * Parses the binary `crl-set` data into a structured format.
+ * Parses the binary CRLSet data into a structured format.
  *
- * The `crl-set` file consists of a JSON header followed by a binary
+ * The CRLSet file consists of a JSON header followed by a binary
  * body containing SPKI hashes and associated revoked certificate serial numbers.
  *
- * @param crlSetBuffer The buffer containing the raw `crl-set` data.
+ * @param crlSetBuffer The buffer containing the raw CRLSet data.
  * @returns An object containing the parsed header and the revocation map.
  */
 export function parseCRLSet(crlSetBuffer: Buffer): {
@@ -106,12 +129,25 @@ export function parseCRLSet(crlSetBuffer: Buffer): {
 
 /**
  * High-level function to process a raw CRX file buffer.
- * It unpacks the CRX and parses the contained `crl-set`.
+ * It unpacks the CRX, (optionally) verifies its signature, and parses the contained CRLSet.
  *
  * @param crxBuffer The buffer containing the raw CRX file.
+ * @param options Options, including whether to verify the signature.
  * @returns The parsed CRLSet data.
  */
-export function processCrx(crxBuffer: Buffer) {
-  const crlSetBuffer = unpackCrx(crxBuffer);
+export async function processCrx(
+  crxBuffer: Buffer,
+  options: { verifySignature?: boolean } = { verifySignature: true },
+) {
+  const { header: crxHeader, zipBuffer } = await unpackCrx(crxBuffer);
+
+  if (options.verifySignature) {
+    const isSignatureValid = await verifySignature(crxHeader, zipBuffer);
+    if (!isSignatureValid) {
+      throw new Error('CRX signature verification failed.');
+    }
+  }
+
+  const crlSetBuffer = extractCrlSetFromZip(zipBuffer);
   return parseCRLSet(crlSetBuffer);
 }

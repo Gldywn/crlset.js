@@ -27,10 +27,12 @@
     }
   },
   "scripts": {
-    "test": "jest",
-    "coverage": "c8 --exclude 'scripts/**' --exclude 'test/**' --exclude 'src/utils.ts' --check-coverage --lines 100 --reporter=text --reporter=lcov tsx --test $(find test -name '*.test.ts')",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:fetch-test-crlset": "tsx scripts/fetch-test-crlset.ts",
+    "coverage": "npm run test -- --coverage",
     "build": "tsup",
-    "format": "prettier --write '**/*.ts'"
+    "format": "prettier --write '**/*.ts'",
+    "example:verify": "tsx examples/verify.ts"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
@@ -46,6 +48,7 @@
   "dependencies": {
     "@types/adm-zip": "^0.5.7",
     "adm-zip": "^0.5.16",
-    "fast-xml-parser": "^5.2.5"
+    "fast-xml-parser": "^5.2.5",
+    "protobufjs": "^7.5.3"
   }
 }

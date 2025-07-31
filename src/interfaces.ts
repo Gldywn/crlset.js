@@ -46,3 +46,15 @@ export enum RevocationStatus {
   /** The certificate is revoked because its serial number is listed for its issuer. */
   REVOKED_BY_SERIAL,
 }
+
+// See: src/proto/crx3.proto
+export interface CrxFileHeader {
+  sha256WithRsa: AsymmetricKeyProof[];
+  sha256WithEcdsa: AsymmetricKeyProof[];
+  signedHeaderData: string;
+}
+
+export interface AsymmetricKeyProof {
+  publicKey: string;
+  signature: string;
+}
