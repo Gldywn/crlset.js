@@ -29,7 +29,7 @@
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:fetch-test-crlset": "tsx scripts/fetch-test-crlset.ts",
-    "coverage": "npm run test -- --coverage",
+    "test:coverage": "npm run test -- --coverage",
     "build": "tsup",
     "format": "prettier --write '**/*.ts'",
     "example:verify": "tsx examples/verify.ts"
