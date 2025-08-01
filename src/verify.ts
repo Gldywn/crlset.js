@@ -41,7 +41,7 @@ export async function verifySignature(header: CrxFileHeader, zipBuffer: Buffer):
  * derived form of the component's app ID.
  *
  * @param header The parsed Protobuf header.
- * @returns The public key and signature for the CRLSet, or empty buffers if not found.
+ * @returns The public key and signature for the CRLSet, or `undefined` if not found.
  */
 function findCrlSetKey(header: CrxFileHeader): {
   publicKey: Buffer | undefined;

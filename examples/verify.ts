@@ -3,7 +3,8 @@ import { loadLatestCRLSet, RevocationStatus } from '../src/index';
 async function main() {
   try {
     console.log('Loading the latest CRLSet...');
-    const crlSet = await loadLatestCRLSet();
+    /* `verifySignature` is enabled by default but can be disabled if needed (not recommended) */
+    const crlSet = await loadLatestCRLSet({ verifySignature: true });
     console.log(
       `Successfully loaded CRLSet ${crlSet.sequence} (${crlSet.getBlockedSpkiCount()} blocked SPKIs, ${crlSet.getRevocationCount()} revocations).`,
     );
@@ -20,11 +21,11 @@ async function main() {
     console.log(`Certificate revocation status: ${RevocationStatus[status]}`); // REVOKED_BY_SERIAL
 
     /*
-    crlSet.check(notRevokedInfo.spkiHash, notRevokedInfo.serialNumber); // OK
     crlSet.check(revokedBySpkiInfo.spkiHash, notRevokedInfo.serialNumber); // REVOKED_BY_SPKI
+    crlSet.check(notRevokedInfo.spkiHash, notRevokedInfo.serialNumber); // OK
     */
   } catch (error) {
-    console.error('Error while verifying the CRLSet:', error);
+    console.error('Error while verifying against the CRLSet:', error);
   }
 }
 

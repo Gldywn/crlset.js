@@ -35,4 +35,13 @@ describe('CRX signature Verification', () => {
       'CRX signature verification failed: signedHeaderData is missing.',
     );
   });
+
+  it('should throw an error if no valid public key is found', async () => {
+    const { header, zipBuffer } = await unpackCrx(crxBuffer);
+    header.sha256WithRsa = [];
+    header.sha256WithEcdsa = [];
+    await expect(verifySignature(header, zipBuffer)).rejects.toThrow(
+      'CRX signature verification failed: no valid publicKey for the CRLSet component found.',
+    );
+  });
 });

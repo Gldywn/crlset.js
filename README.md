@@ -24,7 +24,8 @@ The primary function of this library is to determine if a given certificate has 
 
 ```typescript
 console.log('Loading the latest CRLSet...');
-const crlSet = await loadLatestCRLSet();
+// `verifySignature` is enabled by default but can be disabled if needed (not recommended)
+const crlSet = await loadLatestCRLSet({ verifySignature: true });
 console.log(
   `Successfully loaded CRLSet ${crlSet.sequence} (${crlSet.getBlockedSpkiCount()} blocked SPKIs, ${crlSet.getRevocationCount()} revocations).`,
 );
@@ -40,9 +41,9 @@ console.log(
 const status = crlSet.check(revokedBySerialInfo.spkiHash, revokedBySerialInfo.serialNumber);
 console.log(`Certificate revocation status: ${RevocationStatus[status]}`); // REVOKED_BY_SERIAL
 
-// ...
-crlSet.check(notRevokedInfo.spkiHash, notRevokedInfo.serialNumber); // OK
+// [...]
 crlSet.check(revokedBySpkiInfo.spkiHash, notRevokedInfo.serialNumber); // REVOKED_BY_SPKI
+crlSet.check(notRevokedInfo.spkiHash, notRevokedInfo.serialNumber); // OK
 ```
 
 While the `check` method performs a comprehensive verification, you can also call the underlying methods directly if you need to.

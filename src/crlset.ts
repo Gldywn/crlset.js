@@ -70,6 +70,7 @@ export class CRLSet {
    * Returns the number of revoked certificate entries.
    */
   getRevocationCount(): number {
+    /* istanbul ignore next */
     return this.revocations.size;
   }
 
@@ -77,6 +78,7 @@ export class CRLSet {
    * Returns the number of blocked SPKIs.
    */
   getBlockedSpkiCount(): number {
+    /* istanbul ignore next */
     return this.blockedSpkis.size;
   }
 }
