@@ -1,6 +1,6 @@
 {
   "name": "@gldywn/crlset.js",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Fetches and parses the latest Chrome CRLSet in memory, with support for checking whether a certificate or its issuer has been revoked.",
   "homepage": "https://github.com/Gldywn/crlset.js#readme",
   "bugs": {
