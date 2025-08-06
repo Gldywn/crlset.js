@@ -14,10 +14,10 @@ import { CRX_MAGIC, CRL_SET_ZIP_ENTRY } from './constants.js';
  * @returns An object with the parsed Protobuf header (`header`) and the ZIP archive buffer (`zipBuffer`).
  * @throws If the file is not a valid CRXv3 file or if the header length is invalid.
  */
-export async function unpackCrx(crxBuffer: Buffer): Promise<{
+export function unpackCrx(crxBuffer: Buffer): {
   header: CrxFileHeader;
   zipBuffer: Buffer;
-}> {
+} {
   const magic = crxBuffer.toString('ascii', 0, 4);
   if (magic !== CRX_MAGIC) {
     throw new Error(`Invalid CRX magic: expected ${CRX_MAGIC}, got ${magic}`);
@@ -36,7 +36,7 @@ export async function unpackCrx(crxBuffer: Buffer): Promise<{
   }
 
   const protoHeaderBuffer = crxBuffer.subarray(12, zipOffset);
-  const CrxHeader = await getCrxHeaderType();
+  const CrxHeader = getCrxHeaderType();
   const header = CrxHeader.decode(protoHeaderBuffer).toJSON() as CrxFileHeader;
 
   const zipBuffer = crxBuffer.subarray(zipOffset);
@@ -139,7 +139,7 @@ export async function processCrx(
   crxBuffer: Buffer,
   options: { verifySignature?: boolean } = { verifySignature: true },
 ) {
-  const { header: crxHeader, zipBuffer } = await unpackCrx(crxBuffer);
+  const { header: crxHeader, zipBuffer } = unpackCrx(crxBuffer);
 
   if (options.verifySignature) {
     const isSignatureValid = await verifySignature(crxHeader, zipBuffer);

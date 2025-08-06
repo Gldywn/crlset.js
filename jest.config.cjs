@@ -5,6 +5,16 @@ module.exports = {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
+  transform: {
+    '^.+\\.ts$': [
+      'ts-jest',
+      {
+        useESM: true,
+      },
+    ],
+    '\\.proto$': '<rootDir>/test/transformers/proto.cjs',
+  },
+  transformIgnorePatterns: ['node_modules/'],
   collectCoverageFrom: ['src/**/*.ts'],
   coverageThreshold: {
     global: {

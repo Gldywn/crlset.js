@@ -53,12 +53,10 @@ describe('CRLSet parsing', () => {
     }
   });
 
-  it('should throw an error for an invalid magic number', async () => {
+  it('should throw an error for an invalid magic number', () => {
     const invalidBuffer = Buffer.from(crxBuffer);
     invalidBuffer.write('Fail', 0, 4, 'ascii');
-    await expect(parserModule.processCrx(invalidBuffer, { verifySignature: true })).rejects.toThrow(
-      'Invalid CRX magic: expected Cr24, got Fail',
-    );
+    expect(() => parserModule.unpackCrx(invalidBuffer)).toThrow('Invalid CRX magic: expected Cr24, got Fail');
   });
 
   it('should throw an error for an unsupported version', async () => {
@@ -69,10 +67,10 @@ describe('CRLSet parsing', () => {
     );
   });
 
-  it('should throw an error for an invalid header length', async () => {
+  it('should throw an error for an invalid header length', () => {
     const invalidBuffer = Buffer.from(crxBuffer);
     invalidBuffer.writeUInt32LE(invalidBuffer.length, 8);
-    await expect(parserModule.unpackCrx(invalidBuffer)).rejects.toThrow(
+    expect(() => parserModule.unpackCrx(invalidBuffer)).toThrow(
       'Invalid CRX header: header length exceeds file size.',
     );
   });

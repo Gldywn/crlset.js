@@ -1,14 +1,12 @@
 import protobuf from 'protobufjs';
-import { join } from 'path';
-import { getDirname } from './path.js';
+import proto from '../proto/crx3.proto';
 
 let crxHeaderType: protobuf.Type | null = null;
-export async function getCrxHeaderType(): Promise<protobuf.Type> {
+export function getCrxHeaderType(): protobuf.Type {
   if (crxHeaderType) {
     return crxHeaderType;
   }
-  const protoPath = join(getDirname(), '..', 'proto', 'crx3.proto');
-  const root = await protobuf.load(protoPath);
+  const { root } = protobuf.parse(proto);
   crxHeaderType = root.lookupType('crx_file.CrxFileHeader');
   return crxHeaderType;
 }
