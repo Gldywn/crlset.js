@@ -7,7 +7,7 @@ const CRX_URL = `${OMAHA_BASE_URL}/${CRLSET_APP_ID}.crx`;
 const MOCK_XML_RESPONSE = `<?xml version="1.0" encoding="UTF-8"?>
 <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0" server="prod">
   <daystart elapsed_seconds="42913"/>
-  <app appid="hfnkpimlhhgieaddgfemjhofmfblmnib" status="ok">
+  <app appid="${CRLSET_APP_ID}" status="ok">
     <updatecheck codebase="${CRX_URL}" hash="" size="0" status="ok" version="12345"/>
   </app>
 </gupdate>`;
