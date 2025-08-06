@@ -1,3 +1,4 @@
+/* istanbul ignore next */
 export function getDirname(): string {
   if (typeof import.meta?.url === 'string') {
     const { fileURLToPath } = require('url');
