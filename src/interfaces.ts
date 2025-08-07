@@ -30,6 +30,7 @@ export interface UpdateCheck {
 export interface CRLSetHeader {
   Sequence: number;
   NumParents: number;
+  NotAfter: number;
   BlockedSPKIs: string[];
   KnownInterceptionSPKIs: string[];
   BlockedInterceptionSPKIs: string[];

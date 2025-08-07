@@ -11,7 +11,7 @@ import { asPemKey } from './utils/crypto.js';
  * @returns `true` if the signature is valid, `false` otherwise.
  * @throws If no valid key for the CRLSet component is found.
  */
-export async function verifySignature(header: CrxFileHeader, zipBuffer: Buffer): Promise<boolean> {
+export async function verifyCrxSignature(header: CrxFileHeader, zipBuffer: Buffer): Promise<boolean> {
   if (!header.signedHeaderData) {
     throw new Error('CRX signature verification failed: signedHeaderData is missing.');
   }

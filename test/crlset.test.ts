@@ -4,9 +4,13 @@ import { CRL_SET_FIXTURE_PATH } from './utils';
 import type * as CRLSetModuleType from '../src';
 
 const downloadLatestCRLSetCrxMock = jest.fn<typeof CRLSetModuleType.downloadLatestCRLSetCrx>();
+const fetchCrxUrlMock = jest.fn<typeof CRLSetModuleType.fetchCrxUrl>();
+const fetchRemoteHeaderMock = jest.fn<() => Promise<CRLSetModuleType.CRLSetHeader>>();
 
 jest.unstable_mockModule('../src/fetch.js', () => ({
   downloadLatestCRLSetCrx: downloadLatestCRLSetCrxMock,
+  fetchCrxUrl: fetchCrxUrlMock,
+  fetchRemoteHeader: fetchRemoteHeaderMock,
 }));
 
 describe('CRLSet revocation logic', () => {
@@ -21,9 +25,7 @@ describe('CRLSet revocation logic', () => {
     crlsetModule = await import('../src');
 
     crxBuffer = readFileSync(CRL_SET_FIXTURE_PATH);
-    const { header, revocations } = await crlsetModule.processCrx(crxBuffer, {
-      verifySignature: true,
-    });
+    const { header, revocations } = await crlsetModule.processCrx(crxBuffer, true);
     crlSet = new crlsetModule.CRLSet(header, revocations);
 
     const blockedSpkiBase64 = crlSet.header.BlockedSPKIs[0];

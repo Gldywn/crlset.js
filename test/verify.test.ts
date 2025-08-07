@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { CRL_SET_FIXTURE_PATH } from './utils';
-import { CrxFileHeader, verifySignature, unpackCrx } from '../src';
+import { CrxFileHeader, verifyCrxSignature, unpackCrx } from '../src';
 
 describe('CRX signature Verification', () => {
   let crxBuffer: Buffer;
@@ -11,27 +11,27 @@ describe('CRX signature Verification', () => {
 
   it('should return true for a valid signature from a real CRX file', async () => {
     const { header, zipBuffer } = await unpackCrx(crxBuffer);
-    await expect(verifySignature(header, zipBuffer)).resolves.toBe(true);
+    await expect(verifyCrxSignature(header, zipBuffer)).resolves.toBe(true);
   });
 
   it('should return false for a valid header with a tampered zip buffer', async () => {
     const { header } = await unpackCrx(crxBuffer);
     const tamperedZipBuffer = Buffer.from('this is not the real zip file');
-    await expect(verifySignature(header, tamperedZipBuffer)).resolves.toBe(false);
+    await expect(verifyCrxSignature(header, tamperedZipBuffer)).resolves.toBe(false);
   });
 
   it('should return false for a header with corrupted signedHeaderData', async () => {
     const { header, zipBuffer } = await unpackCrx(crxBuffer);
     const corruptedHeader = { ...header, signedHeaderData: 'bm90IGEgdmFsaWQgYnVmZmVy' } as CrxFileHeader;
 
-    await expect(verifySignature(corruptedHeader, zipBuffer)).resolves.toBe(false);
+    await expect(verifyCrxSignature(corruptedHeader, zipBuffer)).resolves.toBe(false);
   });
 
   it('should throw an error if signedHeaderData is missing', async () => {
     const { zipBuffer } = await unpackCrx(crxBuffer);
     const incompleteHeader = {} as CrxFileHeader;
 
-    await expect(verifySignature(incompleteHeader, zipBuffer)).rejects.toThrow(
+    await expect(verifyCrxSignature(incompleteHeader, zipBuffer)).rejects.toThrow(
       'CRX signature verification failed: signedHeaderData is missing.',
     );
   });
@@ -40,7 +40,7 @@ describe('CRX signature Verification', () => {
     const { header, zipBuffer } = await unpackCrx(crxBuffer);
     header.sha256WithRsa = [];
     header.sha256WithEcdsa = [];
-    await expect(verifySignature(header, zipBuffer)).rejects.toThrow(
+    await expect(verifyCrxSignature(header, zipBuffer)).rejects.toThrow(
       'CRX signature verification failed: no valid publicKey for the CRLSet component found.',
     );
   });

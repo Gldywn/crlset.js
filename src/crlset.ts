@@ -1,4 +1,6 @@
+import { downloadLatestCRLSetCrx, fetchRemoteHeader } from './fetch.js';
 import { CRLSetHeader, RevocationStatus } from './interfaces.js';
+import { processCrx } from './parser.js';
 
 /**
  * Represents a parsed Chrome CRLSet.
@@ -81,4 +83,35 @@ export class CRLSet {
     /* istanbul ignore next */
     return this.blockedSpkis.size;
   }
+}
+
+let cachedCRLSet: CRLSet | null = null;
+
+/**
+ * Fetches the latest CRLSet from the Google Omaha proxy,
+ * processes the CRX file, and returns a CRLSet instance.
+ *
+ * This function uses an in-memory cache to avoid repeated downloads.
+ *
+ * @param options Options, including whether to verify the signature.
+ * @returns A new `CRLSet` instance containing the latest revocation data.
+ */
+export async function loadLatestCRLSet(
+  options: { verifySignature?: boolean; useCache?: boolean } = {},
+): Promise<CRLSet> {
+  const { useCache = true, verifySignature = true } = options;
+  if (useCache && cachedCRLSet) {
+    if (cachedCRLSet.header.NotAfter > Date.now() / 1000) {
+      const remoteHeader = await fetchRemoteHeader();
+      if (remoteHeader.Sequence <= cachedCRLSet.header.Sequence) {
+        return cachedCRLSet;
+      }
+    }
+  }
+
+  const crxBuffer = await downloadLatestCRLSetCrx();
+  const { header, revocations } = await processCrx(crxBuffer, verifySignature);
+  cachedCRLSet = new CRLSet(header, revocations);
+
+  return cachedCRLSet;
 }

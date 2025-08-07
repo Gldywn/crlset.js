@@ -4,10 +4,10 @@ import { CRL_SET_FIXTURE_PATH } from './utils';
 import type * as ParserModuleType from '../src/parser';
 import type * as VerifierModuleType from '../src/verify';
 
-const verifySignatureMock = jest.fn<typeof VerifierModuleType.verifySignature>();
+const verifyCrxSignatureMock = jest.fn<typeof VerifierModuleType.verifyCrxSignature>();
 
 jest.unstable_mockModule('../src/verify.js', () => ({
-  verifySignature: verifySignatureMock,
+  verifyCrxSignature: verifyCrxSignatureMock,
 }));
 
 describe('CRLSet parsing', () => {
@@ -20,19 +20,17 @@ describe('CRLSet parsing', () => {
   });
 
   afterEach(() => {
-    verifySignatureMock.mockClear();
+    verifyCrxSignatureMock.mockClear();
   });
 
   it('should process a valid CRX file without errors', async () => {
-    verifySignatureMock.mockResolvedValue(true);
-    await expect(parserModule.processCrx(crxBuffer, { verifySignature: true })).resolves.not.toThrow();
+    verifyCrxSignatureMock.mockResolvedValue(true);
+    await expect(parserModule.processCrx(crxBuffer, true)).resolves.not.toThrow();
   });
 
   it('should return a valid header and revocations map', async () => {
-    verifySignatureMock.mockResolvedValue(true);
-    const { header, revocations } = await parserModule.processCrx(crxBuffer, {
-      verifySignature: true,
-    });
+    verifyCrxSignatureMock.mockResolvedValue(true);
+    const { header, revocations } = await parserModule.processCrx(crxBuffer, true);
 
     // Check header properties
     expect(header).toBeDefined();
@@ -62,7 +60,7 @@ describe('CRLSet parsing', () => {
   it('should throw an error for an unsupported version', async () => {
     const invalidBuffer = Buffer.from(crxBuffer);
     invalidBuffer.writeUInt32LE(2, 4); // Set version to 2
-    await expect(parserModule.processCrx(invalidBuffer, { verifySignature: true })).rejects.toThrow(
+    await expect(parserModule.processCrx(invalidBuffer, true)).rejects.toThrow(
       'Unsupported CRX version: expected 3, got 2',
     );
   });
@@ -83,7 +81,7 @@ describe('CRLSet parsing', () => {
 
     const crx = Buffer.concat([Buffer.from('Cr24\x03\x00\x00\x00'), Buffer.alloc(4), Buffer.alloc(0), zipBuffer]);
     crx.writeUInt32LE(0, 8);
-    await expect(parserModule.processCrx(crx, { verifySignature: false })).rejects.toThrow(
+    await expect(parserModule.processCrx(crx, false)).rejects.toThrow(
       'CRX archive does not contain a CRLSet file.',
     );
   });
@@ -147,8 +145,8 @@ describe('CRLSet parsing', () => {
   });
 
   it('should throw when signature verification fails', async () => {
-    verifySignatureMock.mockResolvedValue(false);
-    await expect(parserModule.processCrx(crxBuffer, { verifySignature: true })).rejects.toThrow(
+    verifyCrxSignatureMock.mockResolvedValue(false);
+    await expect(parserModule.processCrx(crxBuffer, true)).rejects.toThrow(
       'CRX signature verification failed.',
     );
   });

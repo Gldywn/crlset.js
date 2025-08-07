@@ -1,6 +1,6 @@
 import AdmZip from 'adm-zip';
 import type { CRLSetHeader, CrxFileHeader } from './interfaces.js';
-import { verifySignature } from './verify.js';
+import { verifyCrxSignature } from './verify.js';
 import { getCrxHeaderType } from './utils/proto.js';
 import { CRX_MAGIC, CRL_SET_ZIP_ENTRY } from './constants.js';
 
@@ -78,17 +78,9 @@ export function parseCRLSet(crlSetBuffer: Buffer): {
   header: CRLSetHeader;
   revocations: Map<string, Set<string>>;
 } {
-  if (crlSetBuffer.length < 2) {
-    throw new Error('CRLSet file is truncated (at header length).');
-  }
+  const header = parseCRLSetHeader(crlSetBuffer);
+  console.log('Header', header);
   const headerLen = crlSetBuffer.readUInt16LE(0);
-
-  if (crlSetBuffer.length < 2 + headerLen) {
-    throw new Error('CRLSet file is truncated (at header content).');
-  }
-  const headerBytes = crlSetBuffer.subarray(2, 2 + headerLen);
-  const header = JSON.parse(headerBytes.toString('utf8')) as CRLSetHeader;
-
   const revocations = new Map<string, Set<string>>();
   let offset = 2 + headerLen;
 
@@ -128,6 +120,29 @@ export function parseCRLSet(crlSetBuffer: Buffer): {
 }
 
 /**
+ * Parses only the header of a binary CRLSet.
+ *
+ * This function is a lighter version of `parseCRLSet` that only extracts the
+ * JSON header, which is useful for quickly checking metadata like the sequence
+ * number or expiration date without parsing the entire file.
+ *
+ * @param crlSetBuffer The buffer containing the raw CRLSet data.
+ * @returns The parsed CRLSet header.
+ */
+export function parseCRLSetHeader(crlSetBuffer: Buffer): CRLSetHeader {
+  if (crlSetBuffer.length < 2) {
+    throw new Error('CRLSet file is truncated (at header length).');
+  }
+  const headerLen = crlSetBuffer.readUInt16LE(0);
+
+  if (crlSetBuffer.length < 2 + headerLen) {
+    throw new Error('CRLSet file is truncated (at header content).');
+  }
+  const headerBytes = crlSetBuffer.subarray(2, 2 + headerLen);
+  return JSON.parse(headerBytes.toString('utf8')) as CRLSetHeader;
+}
+
+/**
  * High-level function to process a raw CRX file buffer.
  * It unpacks the CRX, (optionally) verifies its signature, and parses the contained CRLSet.
  *
@@ -137,12 +152,12 @@ export function parseCRLSet(crlSetBuffer: Buffer): {
  */
 export async function processCrx(
   crxBuffer: Buffer,
-  options: { verifySignature?: boolean } = { verifySignature: true },
+  verifySignature: boolean,
 ) {
   const { header: crxHeader, zipBuffer } = unpackCrx(crxBuffer);
 
-  if (options.verifySignature) {
-    const isSignatureValid = await verifySignature(crxHeader, zipBuffer);
+  if (verifySignature) {
+    const isSignatureValid = await verifyCrxSignature(crxHeader, zipBuffer);
     if (!isSignatureValid) {
       throw new Error('CRX signature verification failed.');
     }

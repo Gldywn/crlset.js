@@ -1,6 +1,8 @@
 import { XMLParser } from 'fast-xml-parser';
-import type { OmahaResponse } from './interfaces.js';
-import { CRLSET_APP_ID, OMAHA_BASE_URL } from './constants.js';
+import type { CRLSetHeader, OmahaResponse } from './interfaces.js';
+import { CRL_SET_ZIP_ENTRY, CRLSET_APP_ID, OMAHA_BASE_URL } from './constants.js';
+import { parseCRLSetHeader, unpackCrx } from './parser.js';
+import AdmZip from 'adm-zip';
 
 /**
  * Builds the URL to fetch the latest CRLSet version information from Google's Omaha proxy.
@@ -70,6 +72,39 @@ export async function fetchCrxUrl(): Promise<string> {
   }
 
   return crxUrl;
+}
+
+/**
+ * Fetches only the header of the remote CRLSet.
+ *
+ * This function performs a partial download of the CRX file to extract just the
+ * CRLSet header. This is useful for checking the sequence number and expiration
+ * without downloading the entire file.
+ *
+ * @returns The parsed CRLSet header.
+ */
+export async function fetchRemoteHeader(): Promise<CRLSetHeader> {
+  const crxUrl = await fetchCrxUrl();
+  const response = await fetch(crxUrl, {
+    headers: {
+      Range: 'bytes=0-4095', // Fetch first 4KB to be safe
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch CRLSet header: ${response.status} ${response.statusText}`.trim());
+  }
+
+  const partialCrxBuffer = Buffer.from(await response.arrayBuffer());
+  const { zipBuffer } = unpackCrx(partialCrxBuffer);
+  const zip = new AdmZip(zipBuffer);
+  const crlSetEntry = zip.getEntry(CRL_SET_ZIP_ENTRY);
+
+  if (!crlSetEntry) {
+    throw new Error('CRX archive does not contain a CRLSet file.');
+  }
+
+  return parseCRLSetHeader(crlSetEntry.getData());
 }
 
 /**
