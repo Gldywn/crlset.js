@@ -12,7 +12,7 @@ module.exports = {
         useESM: true,
       },
     ],
-    '\\.proto$': '<rootDir>/test/transformers/proto.cjs',
+    '\\.proto$': '<rootDir>/test/transformers/text.cjs',
   },
   transformIgnorePatterns: ['node_modules/'],
   collectCoverageFrom: ['src/**/*.ts'],
