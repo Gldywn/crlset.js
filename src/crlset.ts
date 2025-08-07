@@ -88,30 +88,56 @@ export class CRLSet {
 let cachedCRLSet: CRLSet | null = null;
 
 /**
- * Fetches the latest CRLSet from the Google Omaha proxy,
- * processes the CRX file, and returns a CRLSet instance.
+ * Fetches the latest CRLSet from the Google Omaha proxy, processes it, and
+ * returns a CRLSet instance.
  *
- * This function uses an in-memory cache to avoid repeated downloads.
+ * This function uses an in-memory cache to avoid repeated downloads. The update
+ * behavior can be controlled with the `updateStrategy` option.
  *
- * @param options Options, including whether to verify the signature.
- * @returns A new `CRLSet` instance containing the latest revocation data.
+ * @param options Configuration options for fetching and caching.
+ *   - `verifySignature`: If `true`, the signature of the CRLSet is verified. Defaults to `true`.
+ *   - `updateStrategy`: Defines when to check for a new CRLSet.
+ *     - `'always'`: (Default) Always check for a newer version. If one is found, it's downloaded.
+ *     - `'on-expiry'`: Only check for a new version if the cached one has passed its 'NotAfter' date (i.e., has hard-expired). Note that a newer CRLSet may exist even if the cached one has not expired.
+ * @returns A new `CRLSet` instance with the latest revocation data.
  */
 export async function loadLatestCRLSet(
-  options: { verifySignature?: boolean; useCache?: boolean } = {},
+  options: {
+    verifySignature?: boolean;
+    updateStrategy?: 'always' | 'on-expiry';
+  } = {},
 ): Promise<CRLSet> {
-  const { useCache = true, verifySignature = true } = options;
-  if (useCache && cachedCRLSet) {
-    if (cachedCRLSet.header.NotAfter > Date.now() / 1000) {
-      const remoteHeader = await fetchRemoteHeader();
-      if (remoteHeader.Sequence <= cachedCRLSet.header.Sequence) {
-        return cachedCRLSet;
-      }
-    }
+  const { verifySignature = true, updateStrategy = 'always' } = options;
+  const now = Math.floor(Date.now() / 1000);
+
+  const fetchAndProcessNewSet = async () => {
+    const crxBuffer = await downloadLatestCRLSetCrx();
+    const { header, revocations } = await processCrx(crxBuffer, verifySignature);
+    cachedCRLSet = new CRLSet(header, revocations);
+    return cachedCRLSet;
+  };
+
+  console.log('cachedCRLSet', cachedCRLSet !== null);
+
+  if (!cachedCRLSet) {
+    return await fetchAndProcessNewSet();
   }
 
-  const crxBuffer = await downloadLatestCRLSetCrx();
-  const { header, revocations } = await processCrx(crxBuffer, verifySignature);
-  cachedCRLSet = new CRLSet(header, revocations);
+  const isExpired = cachedCRLSet.header.NotAfter < now;
+
+  if (isExpired) {
+    return await fetchAndProcessNewSet();
+  }
+
+  if (updateStrategy === 'on-expiry') {
+    return cachedCRLSet;
+  }
+
+  // Fallback to 'always' strategy
+  const remoteHeader = await fetchRemoteHeader();
+  if (remoteHeader.Sequence > cachedCRLSet.header.Sequence) {
+    return await fetchAndProcessNewSet();
+  }
 
   return cachedCRLSet;
 }

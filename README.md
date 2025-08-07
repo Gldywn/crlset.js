@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/header.png" alt="crlset.js"/>
+</p>
+
 # CRLSet.js
 
 CRLSet.js is a lightweight CRLSet parser and verifier in TypeScript for Node.js. It fetches and parses the latest Chrome CRLSet in memory, with support for checking whether a certificate or its issuer has been revoked.

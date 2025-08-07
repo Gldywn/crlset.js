@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 import { readFileSync } from 'fs';
 import { CRL_SET_FIXTURE_PATH } from './utils';
 import type * as CRLSetModuleType from '../src';
+import { processCrx } from '../src/parser.js';
 
 const downloadLatestCRLSetCrxMock = jest.fn<typeof CRLSetModuleType.downloadLatestCRLSetCrx>();
 const fetchCrxUrlMock = jest.fn<typeof CRLSetModuleType.fetchCrxUrl>();
@@ -115,5 +116,83 @@ describe('CRLSet revocation logic', () => {
 
       await expect(crlsetModule.loadLatestCRLSet({ verifySignature: true })).rejects.toThrow('Network Error');
     });
+  });
+});
+
+describe('CRLSet caching logic', () => {
+  let crxBuffer: Buffer;
+  let crlsetModule: typeof CRLSetModuleType;
+
+  beforeAll(async () => {
+    crxBuffer = readFileSync(CRL_SET_FIXTURE_PATH);
+    jest.useFakeTimers();
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
+  beforeEach(async () => {
+    jest.resetModules();
+    crlsetModule = await import('../src');
+    downloadLatestCRLSetCrxMock.mockClear();
+    fetchRemoteHeaderMock.mockClear();
+  });
+
+  it('should use cached CRLSet with "on-expiry" strategy if not expired', async () => {
+    downloadLatestCRLSetCrxMock.mockResolvedValue(crxBuffer);
+    const { header } = await processCrx(crxBuffer, false);
+    jest.setSystemTime(new Date((header.NotAfter - 1000) * 1000));
+
+    // First call, should fetch and cache
+    await crlsetModule.loadLatestCRLSet({ updateStrategy: 'on-expiry', verifySignature: false });
+    expect(downloadLatestCRLSetCrxMock).toHaveBeenCalledTimes(1);
+
+    // Second call, should use cache
+    await crlsetModule.loadLatestCRLSet({ updateStrategy: 'on-expiry', verifySignature: false });
+    expect(downloadLatestCRLSetCrxMock).toHaveBeenCalledTimes(1);
+    expect(fetchRemoteHeaderMock).not.toHaveBeenCalled();
+  });
+
+  it('should fetch a new CRLSet with "on-expiry" strategy if cached one is expired', async () => {
+    downloadLatestCRLSetCrxMock.mockResolvedValue(crxBuffer);
+    const { header } = await processCrx(crxBuffer, false);
+
+    // First call, should fetch and cache
+    await crlsetModule.loadLatestCRLSet({ updateStrategy: 'on-expiry', verifySignature: false });
+    expect(downloadLatestCRLSetCrxMock).toHaveBeenCalledTimes(1);
+
+    // Second call, should detect expiry and fetch again
+    jest.setSystemTime(new Date((header.NotAfter + 1000) * 1000));
+    await crlsetModule.loadLatestCRLSet({ updateStrategy: 'on-expiry', verifySignature: false });
+    expect(downloadLatestCRLSetCrxMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('should check for a new version with "always" strategy', async () => {
+    downloadLatestCRLSetCrxMock.mockResolvedValue(crxBuffer);
+    const { header } = await processCrx(crxBuffer, false);
+    jest.setSystemTime(new Date((header.NotAfter - 1000) * 1000)); // Not expired
+    fetchRemoteHeaderMock.mockResolvedValue({ ...header, Sequence: header.Sequence + 1 });
+
+    await crlsetModule.loadLatestCRLSet({ updateStrategy: 'always', verifySignature: false });
+    expect(downloadLatestCRLSetCrxMock).toHaveBeenCalledTimes(1);
+
+    await crlsetModule.loadLatestCRLSet({ updateStrategy: 'always', verifySignature: false });
+    expect(downloadLatestCRLSetCrxMock).toHaveBeenCalledTimes(2);
+    expect(fetchRemoteHeaderMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not fetch a new version with "always" strategy if sequence is not higher', async () => {
+    downloadLatestCRLSetCrxMock.mockResolvedValue(crxBuffer);
+    const { header } = await processCrx(crxBuffer, false);
+    jest.setSystemTime(new Date((header.NotAfter - 1000) * 1000)); // Not expired
+    fetchRemoteHeaderMock.mockResolvedValue(header);
+
+    await crlsetModule.loadLatestCRLSet({ updateStrategy: 'always', verifySignature: false });
+    expect(downloadLatestCRLSetCrxMock).toHaveBeenCalledTimes(1);
+
+    await crlsetModule.loadLatestCRLSet({ updateStrategy: 'always', verifySignature: false });
+    expect(downloadLatestCRLSetCrxMock).toHaveBeenCalledTimes(1);
+    expect(fetchRemoteHeaderMock).toHaveBeenCalledTimes(1);
   });
 });
