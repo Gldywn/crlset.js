@@ -9,6 +9,7 @@ CRLSet.js is a lightweight CRLSet parser and verifier in TypeScript for Node.js.
 [![Build Status](https://github.com/Gldywn/crlset.js/actions/workflows/build.yml/badge.svg)](https://github.com/Gldywn/crlset.js/actions/workflows/build.yml)
 [![Coverage Status (codecov.io)](https://codecov.io/gh/Gldywn/crlset.js/branch/main/graph/badge.svg)](https://codecov.io/gh/Gldywn/crlset.js)
 [![npm](https://img.shields.io/npm/v/@gldywn/crlset.js.svg)](https://www.npmjs.com/package/@gldywn/crlset.js)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A [CRLSet](https://www.chromium.org/Home/chromium-security/crlsets/) is a collection of certificate revocation information aggregated by Google and used in Chrome to quickly identify and block revoked certificates. Unlike traditional Certificate Revocation Lists (CRLs) or the Online Certificate Status Protocol (OCSP), which can be slow and unreliable, CRLSets provide a fast and efficient mechanism for checking the revocation status of a certificate.
 
