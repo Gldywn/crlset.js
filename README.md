@@ -87,7 +87,7 @@ const header: CRLSetHeader = {
   Sequence: 1,
   NumParents: 1,
   BlockedSPKIs: [],
-  NotAfter: Date.now() / 1000 + 3600, // Expires in 1 hour
+  NotAfter: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
   ContentType: 'CRLSet',
   DeltaFrom: 0,
 };
