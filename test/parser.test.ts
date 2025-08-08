@@ -25,12 +25,12 @@ describe('CRLSet parsing', () => {
 
   it('should process a valid CRX file without errors', async () => {
     verifyCrxSignatureMock.mockResolvedValue(true);
-    await expect(parserModule.processCrx(crxBuffer, true)).resolves.not.toThrow();
+    await expect(parserModule.processCrx(crxBuffer, false)).resolves.not.toThrow();
   });
 
   it('should return a valid header and revocations map', async () => {
     verifyCrxSignatureMock.mockResolvedValue(true);
-    const { header, revocations } = await parserModule.processCrx(crxBuffer, true);
+    const { header, revocations } = await parserModule.processCrx(crxBuffer, false);
 
     // Check header properties
     expect(header).toBeDefined();
@@ -60,7 +60,7 @@ describe('CRLSet parsing', () => {
   it('should throw an error for an unsupported version', async () => {
     const invalidBuffer = Buffer.from(crxBuffer);
     invalidBuffer.writeUInt32LE(2, 4); // Set version to 2
-    await expect(parserModule.processCrx(invalidBuffer, true)).rejects.toThrow(
+    await expect(parserModule.processCrx(invalidBuffer, false)).rejects.toThrow(
       'Unsupported CRX version: expected 3, got 2',
     );
   });
@@ -97,7 +97,7 @@ describe('CRLSet parsing', () => {
   });
 
   it('should throw an error on a truncated file (at spki hash)', () => {
-    const header = { NumParents: 1 };
+    const header = { ContentType: 'CRLSet', DeltaFrom: 0, NumParents: 1 };
     const headerJson = JSON.stringify(header);
     const headerLen = Buffer.byteLength(headerJson);
 
@@ -109,7 +109,7 @@ describe('CRLSet parsing', () => {
   });
 
   it('should throw when CRLSet is truncated (at serial count)', () => {
-    const header = { NumParents: 1 };
+    const header = { ContentType: 'CRLSet', DeltaFrom: 0, NumParents: 1 };
     const headerJson = JSON.stringify(header);
     const headerLen = Buffer.byteLength(headerJson);
     const buffer = Buffer.alloc(2 + headerLen + 32 + 3);
@@ -120,7 +120,7 @@ describe('CRLSet parsing', () => {
   });
 
   it('should throw when CRLSet is truncated (at serial length)', () => {
-    const header = { NumParents: 1, NumSerials: 1 };
+    const header = { ContentType: 'CRLSet', DeltaFrom: 0, NumParents: 1, NumSerials: 1 };
     const headerJson = JSON.stringify(header);
     const headerLen = Buffer.byteLength(headerJson);
     const buffer = Buffer.alloc(2 + headerLen + 32 + 4);
@@ -132,7 +132,7 @@ describe('CRLSet parsing', () => {
   });
 
   it('should throw when CRLSet is truncated (at serial number)', () => {
-    const header = { NumParents: 1, NumSerials: 1 };
+    const header = { ContentType: 'CRLSet', DeltaFrom: 0, NumParents: 1, NumSerials: 1 };
     const headerJson = JSON.stringify(header);
     const headerLen = Buffer.byteLength(headerJson);
     const buffer = Buffer.alloc(2 + headerLen + 32 + 4 + 1);
@@ -148,6 +148,30 @@ describe('CRLSet parsing', () => {
     verifyCrxSignatureMock.mockResolvedValue(false);
     await expect(parserModule.processCrx(crxBuffer, true)).rejects.toThrow(
       'CRX signature verification failed.',
+    );
+  });
+
+  it('should throw an error for an invalid content type', () => {
+    const header = { ContentType: 'Invalid', DeltaFrom: 0 };
+    const headerJson = JSON.stringify(header);
+    const headerLen = Buffer.byteLength(headerJson);
+    const buffer = Buffer.alloc(2 + headerLen);
+    buffer.writeUInt16LE(headerLen, 0);
+    buffer.write(headerJson, 2);
+    expect(() => parserModule.parseCRLSetHeader(buffer)).toThrow(
+      "Invalid CRLSet ContentType: expected 'CRLSet', got 'Invalid'",
+    );
+  });
+
+  it('should throw an error for a delta CRLSet', () => {
+    const header = { ContentType: 'CRLSet', DeltaFrom: 12345 };
+    const headerJson = JSON.stringify(header);
+    const headerLen = Buffer.byteLength(headerJson);
+    const buffer = Buffer.alloc(2 + headerLen);
+    buffer.writeUInt16LE(headerLen, 0);
+    buffer.write(headerJson, 2);
+    expect(() => parserModule.parseCRLSetHeader(buffer)).toThrow(
+      'This library only supports full CRLSets. This is a delta from version 12345.',
     );
   });
 });
