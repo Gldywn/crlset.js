@@ -113,6 +113,22 @@ describe('CRLSet header fetching', () => {
     );
   });
 
+  it('should throw an error for an invalid ZIP header in the CRX file', async () => {
+    // This creates a fake CRX file with a valid header but an invalid ZIP payload.
+    const crxHeader = Buffer.from('Cr24\x03\x00\x00\x00\x00\x00\x00\x00');
+    const invalidZipPayload = Buffer.from('this is not a zip file');
+    const crx = Buffer.concat([crxHeader, invalidZipPayload]);
+
+    const mockFetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(MOCK_XML_RESPONSE, { status: 200 }))
+      .mockResolvedValueOnce(new Response(crx, { status: 200 }));
+
+    global.fetch = mockFetch;
+
+    await expect(fetchRemoteHeader()).rejects.toThrow('Invalid ZIP local file header.');
+  });
+
   it('should throw an error if the CRX archive does not contain a CRLSet file', async () => {
     const adm_zip = (await import('adm-zip')).default;
     const zip = new adm_zip();
