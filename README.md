@@ -28,8 +28,15 @@ The primary function of this library is to determine if a given certificate has 
 
 ```typescript
 console.log('Loading the latest CRLSet...');
-// `verifySignature` is enabled by default but can be disabled if needed (not recommended)
-const crlSet = await loadLatestCRLSet({ verifySignature: true });
+/*
+ * By default, `loadLatestCRLSet` verifies the CRX signature, checks for a newer version,
+ * and downloads it if available. The latest version is cached to avoid redundant downloads.
+ * For customization:
+ *  - `verifySignature: false`: Disables CRX signature verification (not recommended).
+ *  - `updateStrategy: 'on-expiry'`: Updates only when the cached version hard-expires (not recommended).
+ * e.g. `await loadLatestCRLSet({ verifySignature: false, updateStrategy: 'on-expiry' })`
+ */
+const crlSet = await loadLatestCRLSet();
 console.log(
   `Successfully loaded CRLSet ${crlSet.sequence} (${crlSet.getBlockedSpkiCount()} blocked SPKIs, ${crlSet.getRevocationCount()} revocations).`,
 );
@@ -50,7 +57,7 @@ crlSet.check(revokedBySpkiInfo.spkiHash, notRevokedInfo.serialNumber); // REVOKE
 crlSet.check(notRevokedInfo.spkiHash, notRevokedInfo.serialNumber); // OK
 ```
 
-While the `check` method performs a comprehensive verification, you can also call the underlying methods directly if you need to.
+While the `check` method performs a comprehensive verification, you can also call the underlying methods directly if you need to:
 
 ```typescript
 const isRevokedBySpki = crlSet.isRevokedBySPKI(certificateInfo.spkiHash);
