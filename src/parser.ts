@@ -79,7 +79,6 @@ export function parseCRLSet(crlSetBuffer: Buffer): {
   revocations: Map<string, Set<string>>;
 } {
   const header = parseCRLSetHeader(crlSetBuffer);
-  console.log('Header', header);
   const headerLen = crlSetBuffer.readUInt16LE(0);
   const revocations = new Map<string, Set<string>>();
   let offset = 2 + headerLen;
@@ -139,7 +138,17 @@ export function parseCRLSetHeader(crlSetBuffer: Buffer): CRLSetHeader {
     throw new Error('CRLSet file is truncated (at header content).');
   }
   const headerBytes = crlSetBuffer.subarray(2, 2 + headerLen);
-  return JSON.parse(headerBytes.toString('utf8')) as CRLSetHeader;
+  const header = JSON.parse(headerBytes.toString('utf8')) as CRLSetHeader;
+
+  if (header.ContentType !== 'CRLSet') {
+    throw new Error(`Invalid CRLSet ContentType: expected 'CRLSet', got '${header.ContentType}'`);
+  }
+
+  if (header.DeltaFrom !== 0) {
+    throw new Error(`This library only supports full CRLSets. This is a delta from version ${header.DeltaFrom}.`);
+  }
+
+  return header;
 }
 
 /**

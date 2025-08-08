@@ -28,12 +28,48 @@ export interface UpdateCheck {
 }
 
 export interface CRLSetHeader {
+  /**
+   * The version of the CRLSet file format. This is expected to be 0.
+   */
+  Version: number;
+  /**
+   * The content type of the file. This should always be 'CRLSet'.
+   */
+  ContentType: 'CRLSet';
+  /**
+   * A monotonically increasing number representing the version of the content.
+   * This is used to determine if a newer CRLSet is available.
+   */
   Sequence: number;
+  /**
+   * For delta updates, this is the sequence number of the full CRLSet that
+   * this delta should be applied to. For a full CRLSet, this will be 0.
+   */
+  DeltaFrom: number;
+  /**
+   * The number of parent SPKI hashes in the set.
+   */
   NumParents: number;
-  NotAfter: number;
+  /**
+   * A list of Base64-encoded, SHA-256-hashed SubjectPublicKeyInfos that
+   * are globally blocked.
+   */
   BlockedSPKIs: string[];
+  /**
+   * A list of Base64-encoded, SHA-256-hashed SubjectPublicKeyInfos known
+   * to be used for interception.
+   */
   KnownInterceptionSPKIs: string[];
+  /**
+   * A list of Base64-encoded, SHA-256-hashed SubjectPublicKeyInfos known to
+   * be used for interception and that should be actively blocked.
+   */
   BlockedInterceptionSPKIs: string[];
+  /**
+   * The number of seconds since the Unix epoch, after which, this CRLSet
+   * is considered expired.
+   */
+  NotAfter: number;
 }
 
 /**

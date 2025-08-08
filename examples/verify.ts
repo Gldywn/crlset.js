@@ -1,10 +1,18 @@
-import { loadLatestCRLSet, RevocationStatus } from '../src/index';
+// @ts-ignore
+import { loadLatestCRLSet, RevocationStatus } from '../dist';
 
 async function main() {
   try {
-    console.log('Loading the latest CRLSet...');
-    /* `verifySignature` is enabled by default but can be disabled if needed (not recommended) */
-    const crlSet = await loadLatestCRLSet({ verifySignature: true });
+    console.log('\nLoading the latest CRLSet...');
+    /*
+     * By default, `loadLatestCRLSet` verifies the CRX signature, checks for a newer version,
+     * and downloads it if available. The latest version is cached to avoid redundant downloads.
+     * For customization:
+     *  - `verifySignature: false`: Disables CRX signature verification (not recommended).
+     *  - `updateStrategy: 'on-expiry'`: Updates only when the cached version hard-expires (not recommended).
+     * e.g. `await loadLatestCRLSet({ verifySignature: false, updateStrategy: 'on-expiry' })`
+     */
+    const crlSet = await loadLatestCRLSet();
     console.log(
       `Successfully loaded CRLSet ${crlSet.sequence} (${crlSet.getBlockedSpkiCount()} blocked SPKIs, ${crlSet.getRevocationCount()} revocations).`,
     );
