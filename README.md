@@ -73,10 +73,6 @@ const isRevokedBySerial = crlSet.isRevokedBySerial(certificateInfo.spkiHash, cer
 console.log(`Is certificate revoked by serial?: ${isRevokedBySerial}`);
 ```
 
-## Advanced Usage
-
-For more specific use cases, you can use the `CRLSet` class and other exported functions directly. This allows you to construct a `CRLSet` instance from custom data or leverage the library's internal mechanics for your own logic. This makes `crlset.js` a versatile "Swiss Army knife" for handling CRLSets.
-
 ### Direct `CRLSet` Instantiation
 
 You can create a `CRLSet` instance yourself if you have the header and revocation data.
