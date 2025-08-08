@@ -117,8 +117,6 @@ export async function loadLatestCRLSet(
     return cachedCRLSet;
   };
 
-  console.log('cachedCRLSet', cachedCRLSet !== null);
-
   if (!cachedCRLSet) {
     return await fetchAndProcessNewSet();
   }

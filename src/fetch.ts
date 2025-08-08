@@ -97,14 +97,25 @@ export async function fetchRemoteHeader(): Promise<CRLSetHeader> {
 
   const partialCrxBuffer = Buffer.from(await response.arrayBuffer());
   const { zipBuffer } = unpackCrx(partialCrxBuffer);
-  const zip = new AdmZip(zipBuffer);
-  const crlSetEntry = zip.getEntry(CRL_SET_ZIP_ENTRY);
 
-  if (!crlSetEntry) {
-    throw new Error('CRX archive does not contain a CRLSet file.');
+  // Manually parse the local file header of the ZIP entry.
+  // We can't use a full ZIP library because we only have a partial file.
+  if (zipBuffer.toString('ascii', 0, 4) !== 'PK\x03\x04') {
+    throw new Error('Invalid ZIP local file header.');
   }
 
-  return parseCRLSetHeader(crlSetEntry.getData());
+  const fileNameLength = zipBuffer.readUInt16LE(26);
+  const extraFieldLength = zipBuffer.readUInt16LE(28);
+  const fileName = zipBuffer.toString('ascii', 30, 30 + fileNameLength);
+
+  if (fileName !== CRL_SET_ZIP_ENTRY) {
+    throw new Error(`Expected to find '${CRL_SET_ZIP_ENTRY}' but found '${fileName}'.`);
+  }
+
+  const fileDataOffset = 30 + fileNameLength + extraFieldLength;
+  const crlSetBuffer = zipBuffer.subarray(fileDataOffset);
+
+  return parseCRLSetHeader(crlSetBuffer);
 }
 
 /**
